@@ -14,5 +14,6 @@ venv/
 .vscode/
 .idea/
 
-# Screenshot summaries (optional)
-*_summary.txt
+# Runtime data
+logs/
+screenshots/
