@@ -1,50 +1,18 @@
-# Environment variables (contains API keys)
-.env
+# Environment variables and wallet files
+config/.env
+config/wallet-keypair.json
+config/*.json
 
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environment
-screenshot_env/
 venv/
-env/
-ENV/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Screenshot summaries (optional - you might want to keep these)
-*_summary.txt
-
-# Logs
 *.log
 
+# System files
+.DS_Store
+.vscode/
+.idea/
+
+# Screenshot summaries (optional)
+*_summary.txt
