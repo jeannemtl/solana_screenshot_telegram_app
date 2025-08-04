@@ -47,7 +47,7 @@ nano .env
 source .env
 
 # Start the summarizer
-python3 screenshot_summarizer.py
+python3 screenshot_tg.py
 ```
 
 ## Usage
