@@ -160,6 +160,9 @@ class EnhancedScreenshotSummarizer:
                 elif callback_data.startswith("full_webpage_"):
                     analysis_id = callback_data.replace("full_webpage_", "")
                     action_type = "webpage"
+                elif callback_data.startswith("deep_research_"):
+                    analysis_id = callback_data.replace("deep_research_", "")
+                    action_type = "deep_research"
                 else:
                     print(f"Unknown callback data: {callback_data}")
                     return
@@ -180,6 +183,9 @@ class EnhancedScreenshotSummarizer:
                 elif action_type == "webpage":
                     print(f"Processing webpage analysis for ID: {analysis_id}")
                     self.send_full_webpage_summary(analysis_id)
+                elif action_type == "deep_research":
+                    print(f"Processing deep research for ID: {analysis_id}")
+                    self.send_deep_research_analysis(analysis_id)
                     
             finally:
                 # Remove from processing set
@@ -404,6 +410,414 @@ FIELD: [primary research field if identifiable, e.g., machine learning, physics,
             self.send_telegram_message(message)
         
         print("=== arXiv Research Analysis Complete ===\n")
+    
+    def send_deep_research_analysis(self, analysis_id):
+        """Perform comprehensive deep research analysis"""
+        print(f"=== Deep Research Analysis Started ===")
+        
+        # Get analysis data with lock
+        with self.callback_lock:
+            if analysis_id not in self.pending_analyses:
+                print(f"ERROR: Analysis ID {analysis_id} not found")
+                return
+            analysis_data = self.pending_analyses[analysis_id]
+        
+        image_path = analysis_data['image_path']
+        print(f"Image path: {image_path}")
+        
+        # Send initial "research in progress" message
+        self.send_telegram_message("🔬 *Deep Research Analysis*\n\nAnalyzing screenshot and conducting comprehensive research...\n\n⏳ This may take 1-2 minutes")
+        
+        # Step 1: Extract comprehensive research topics
+        print("Step 1: Extracting research topics...")
+        research_topics = self.extract_comprehensive_topics(image_path)
+        
+        if not research_topics:
+            message = "*Deep Research Analysis*\n\nFailed to extract research topics from screenshot."
+            self.send_telegram_message(message)
+            return
+        
+        # Step 2: Generate research questions
+        print("Step 2: Generating research questions...")
+        research_questions = self.generate_research_questions(research_topics)
+        
+        # Step 3: Conduct multi-source research
+        print("Step 3: Conducting multi-source research...")
+        research_results = self.conduct_multi_source_research(research_topics, research_questions)
+        
+        # Step 4: Synthesize comprehensive analysis
+        print("Step 4: Synthesizing comprehensive analysis...")
+        final_analysis = self.synthesize_research_findings(research_topics, research_questions, research_results, analysis_data)
+        
+        # Send final comprehensive report
+        message = f"🔬 *Deep Research Analysis Complete*\n\n{final_analysis}"
+        
+        # Send in parts if too long
+        if len(message) > 4000:
+            parts = self.split_message(message, 4000)
+            for i, part in enumerate(parts):
+                print(f"Sending research part {i+1}/{len(parts)}")
+                self.send_telegram_message(part)
+                time.sleep(1)
+        else:
+            self.send_telegram_message(message)
+        
+        print("=== Deep Research Analysis Complete ===\n")
+    
+    def extract_comprehensive_topics(self, image_path):
+        """Extract comprehensive research topics and context"""
+        try:
+            with open(image_path, 'rb') as image_file:
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            if image_path.lower().endswith('.png'):
+                media_type = "image/png"
+            elif image_path.lower().endswith(('.jpg', '.jpeg')):
+                media_type = "image/jpeg"
+            else:
+                media_type = "image/png"
+            
+            prompt = """Analyze this screenshot comprehensively and extract all research-worthy topics. Look for:
+
+1. Main subject/technology/concept being discussed
+2. Related technologies, frameworks, or methodologies
+3. Potential research areas and sub-topics
+4. Key terms that could lead to deeper investigation
+5. Context clues about the domain or field
+6. Any specific problems or challenges mentioned
+7. Names of people, companies, or projects referenced
+
+Respond with:
+MAIN_TOPIC: [primary subject of the screenshot]
+RELATED_TOPICS: [comma-separated list of related research areas]
+TECHNICAL_TERMS: [comma-separated list of technical terms and concepts]
+DOMAIN: [field/industry/domain]
+RESEARCH_POTENTIAL: [high/medium/low - how much research potential this has]
+CONTEXT: [brief description of what type of content this is]"""
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                },
+                json={
+                    "model": "claude-3-5-sonnet-20241022",
+                    "max_tokens": 400,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": prompt
+                                },
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": media_type,
+                                        "data": image_data
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+            
+            if response.status_code == 200:
+                analysis = response.json()['content'][0]['text']
+                return self.parse_comprehensive_topics(analysis)
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"Topic extraction failed: {e}")
+            return None
+    
+    def parse_comprehensive_topics(self, analysis_text):
+        """Parse comprehensive topic analysis"""
+        result = {
+            'main_topic': '',
+            'related_topics': [],
+            'technical_terms': [],
+            'domain': '',
+            'research_potential': 'medium',
+            'context': ''
+        }
+        
+        try:
+            lines = analysis_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line.startswith('MAIN_TOPIC:'):
+                    result['main_topic'] = line.split(':', 1)[1].strip()
+                elif line.startswith('RELATED_TOPICS:'):
+                    topics = line.split(':', 1)[1].strip()
+                    result['related_topics'] = [t.strip() for t in topics.split(',')]
+                elif line.startswith('TECHNICAL_TERMS:'):
+                    terms = line.split(':', 1)[1].strip()
+                    result['technical_terms'] = [t.strip() for t in terms.split(',')]
+                elif line.startswith('DOMAIN:'):
+                    result['domain'] = line.split(':', 1)[1].strip()
+                elif line.startswith('RESEARCH_POTENTIAL:'):
+                    result['research_potential'] = line.split(':', 1)[1].strip()
+                elif line.startswith('CONTEXT:'):
+                    result['context'] = line.split(':', 1)[1].strip()
+        except Exception as e:
+            print(f"Topic parsing failed: {e}")
+        
+        return result
+    
+    def generate_research_questions(self, topics):
+        """Generate focused research questions based on topics"""
+        try:
+            prompt = f"""Based on these research topics, generate 5-7 focused research questions that would provide deep insights:
+
+MAIN TOPIC: {topics['main_topic']}
+DOMAIN: {topics['domain']}
+RELATED TOPICS: {', '.join(topics['related_topics'][:5])}
+TECHNICAL TERMS: {', '.join(topics['technical_terms'][:5])}
+
+Generate questions that explore:
+1. Current state of the art
+2. Recent developments and trends
+3. Practical applications and use cases
+4. Challenges and limitations
+5. Future directions and opportunities
+6. Comparative analysis with alternatives
+7. Real-world implementation examples
+
+Format as:
+QUESTION_1: [specific research question]
+QUESTION_2: [specific research question]
+...etc"""
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                },
+                json={
+                    "model": "claude-3-5-sonnet-20241022",
+                    "max_tokens": 500,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": prompt
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+            
+            if response.status_code == 200:
+                response_text = response.json()['content'][0]['text']
+                questions = []
+                for line in response_text.split('\n'):
+                    if line.strip().startswith('QUESTION_'):
+                        question = line.split(':', 1)[1].strip()
+                        questions.append(question)
+                return questions
+            else:
+                return []
+                
+        except Exception as e:
+            print(f"Question generation failed: {e}")
+            return []
+    
+    def conduct_multi_source_research(self, topics, questions):
+        """Conduct research using multiple approaches"""
+        results = {
+            'arxiv_papers': [],
+            'web_research': [],
+            'technical_analysis': ''
+        }
+        
+        # 1. Search arXiv if research-related
+        if topics['research_potential'] in ['high', 'medium']:
+            print("Searching arXiv papers...")
+            all_keywords = topics['technical_terms'] + topics['related_topics']
+            results['arxiv_papers'] = self.search_arxiv_papers(all_keywords[:5], max_results=10)
+        
+        # 2. Conduct web research for each key question
+        print("Conducting web research...")
+        search_queries = []
+        
+        # Generate search queries from topics and questions
+        search_queries.append(f"{topics['main_topic']} latest developments 2024")
+        search_queries.append(f"{topics['main_topic']} {topics['domain']} applications")
+        search_queries.append(f"{topics['main_topic']} challenges limitations")
+        
+        # Add question-based searches
+        for question in questions[:3]:  # Use top 3 questions
+            query = self.question_to_search_query(question, topics['main_topic'])
+            if query:
+                search_queries.append(query)
+        
+        # Simulate web research (in real implementation, you'd use SerpAPI or similar)
+        for query in search_queries[:5]:  # Limit to 5 searches
+            results['web_research'].append({
+                'query': query,
+                'summary': f"Research findings for: {query}"  # Placeholder
+            })
+        
+        # 3. Generate technical analysis
+        print("Generating technical analysis...")
+        results['technical_analysis'] = self.generate_technical_analysis(topics)
+        
+        return results
+    
+    def question_to_search_query(self, question, main_topic):
+        """Convert research question to search query"""
+        # Simple extraction of key terms from question
+        question_lower = question.lower()
+        if 'current state' in question_lower or 'state of art' in question_lower:
+            return f"{main_topic} state of the art 2024"
+        elif 'challenge' in question_lower or 'limitation' in question_lower:
+            return f"{main_topic} challenges problems"
+        elif 'application' in question_lower or 'use case' in question_lower:
+            return f"{main_topic} applications use cases"
+        elif 'future' in question_lower or 'trend' in question_lower:
+            return f"{main_topic} future trends 2024"
+        else:
+            return f"{main_topic} research"
+    
+    def generate_technical_analysis(self, topics):
+        """Generate deep technical analysis"""
+        try:
+            prompt = f"""Provide a comprehensive technical analysis of {topics['main_topic']} in the {topics['domain']} domain.
+
+Cover:
+1. Technical architecture and components
+2. Key algorithms or methodologies involved
+3. Performance characteristics and metrics
+4. Integration considerations
+5. Scalability and limitations
+6. Comparison with alternative approaches
+7. Implementation complexity and requirements
+
+MAIN TOPIC: {topics['main_topic']}
+DOMAIN: {topics['domain']}
+TECHNICAL TERMS: {', '.join(topics['technical_terms'][:7])}
+RELATED AREAS: {', '.join(topics['related_topics'][:5])}
+
+Provide a detailed technical analysis suitable for researchers and practitioners."""
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                },
+                json={
+                    "model": "claude-3-5-sonnet-20241022",
+                    "max_tokens": 800,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": prompt
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+            
+            if response.status_code == 200:
+                return response.json()['content'][0]['text']
+            else:
+                return "Technical analysis generation failed"
+                
+        except Exception as e:
+            print(f"Technical analysis failed: {e}")
+            return f"Error generating technical analysis: {str(e)}"
+    
+    def synthesize_research_findings(self, topics, questions, results, analysis_data):
+        """Synthesize all research findings into comprehensive report"""
+        try:
+            # Prepare research context
+            arxiv_summary = ""
+            if results['arxiv_papers']:
+                arxiv_summary = f"Found {len(results['arxiv_papers'])} relevant papers on arXiv:\n"
+                for i, paper in enumerate(results['arxiv_papers'][:3], 1):
+                    arxiv_summary += f"{i}. {paper['title'][:60]}... ({paper['published']})\n"
+            
+            webpage_context = ""
+            if analysis_data.get('webpage_data') and analysis_data['webpage_data']['success']:
+                webpage_context = f"Source webpage: {analysis_data['webpage_data']['title']}"
+            
+            prompt = f"""Synthesize a comprehensive research report based on the following analysis:
+
+SCREENSHOT CONTEXT: {topics['context']}
+MAIN RESEARCH TOPIC: {topics['main_topic']}
+DOMAIN: {topics['domain']}
+RESEARCH POTENTIAL: {topics['research_potential']}
+
+TECHNICAL ANALYSIS:
+{results['technical_analysis']}
+
+ARXIV RESEARCH:
+{arxiv_summary}
+
+WEBPAGE CONTEXT:
+{webpage_context}
+
+Generate a comprehensive report covering:
+1. **Executive Summary** - Key findings and insights
+2. **Technical Overview** - Core concepts and technologies
+3. **Current State** - What's happening now in this field
+4. **Key Insights** - Important discoveries or patterns
+5. **Future Directions** - Where this field is heading
+6. **Practical Applications** - Real-world use cases
+7. **Further Research** - Recommended next steps
+
+Keep it detailed but well-organized. Use markdown formatting for sections."""
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                },
+                json={
+                    "model": "claude-3-5-sonnet-20241022",
+                    "max_tokens": 1500,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": prompt
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+            
+            if response.status_code == 200:
+                return response.json()['content'][0]['text']
+            else:
+                return "Research synthesis failed"
+                
+        except Exception as e:
+            print(f"Research synthesis failed: {e}")
+            return f"Error synthesizing research: {str(e)}"
     
     def split_message(self, message, max_length):
         """Split long message into parts"""
@@ -846,6 +1260,12 @@ SUMMARY: [brief description of what's shown]"""
                         "text": "🔬 Research Papers",
                         "callback_data": f"arxiv_research_{analysis_id}"
                     }
+                ],
+                [
+                    {
+                        "text": "🧠 Deep Research",
+                        "callback_data": f"deep_research_{analysis_id}"
+                    }
                 ]
             ]
             
@@ -856,6 +1276,9 @@ SUMMARY: [brief description of what's shown]"""
                         "callback_data": f"full_webpage_{analysis_id}"
                     }
                 ])
+            else:
+                # If no webpage, still show Deep Research as option
+                pass
             
             reply_markup = {
                 "inline_keyboard": buttons
