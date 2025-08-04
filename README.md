@@ -15,7 +15,7 @@ Automatically summarizes macOS screenshots using Claude AI and sends them to Tel
 ### 1. Install Dependencies
 
 ```bash
-pip install requests watchdog pillow
+pip install requests watchdog Pillow beautifulsoup4 easyocr
 ```
 
 ### 2. Get API Keys
