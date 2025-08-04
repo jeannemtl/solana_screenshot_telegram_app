@@ -1,10 +1,28 @@
-# Core dependencies
+# Solana and Web3 dependencies (fixed compatibility)
+solana>=0.32.0,<0.33.0
+anchorpy==0.19.1
+base58==2.1.1
+cryptography==41.0.7
+
+# API and HTTP
 requests==2.31.0
-python-dotenv==1.0.0
-watchdog==3.0.0
+aiohttp==3.9.1
+
+# Image processing
 Pillow==10.1.0
 
-# Solana blockchain integration
-solana>=0.32.0
-base58==2.1.1
-cryptography>=41.0.0
+# File system monitoring
+watchdog==3.0.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Optional development tools
+jupyter==1.0.0
+ipython==8.17.2
+
+# Typing extensions for better type hints
+typing-extensions==4.8.0
+
+# JSON handling
+jsonschema==4.20.0
